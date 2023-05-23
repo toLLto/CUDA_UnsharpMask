@@ -82,13 +82,13 @@ int main()
     cv::Mat outputImage1(height, width, CV_8UC1);
     cv::Mat outputImage2(height, width, CV_8UC1);
 
-    unsharpMaskCUDA(inputImage.data, outputImage1.data, width, height, 0.3);
-    unsharpMaskCUDA(inputImage.data, outputImage2.data, width, height, 0.3);
+    unsharpMaskCUDA(inputImage.data, outputImage1.data, width, height, 0.2);
+    unsharpMaskCUDA(inputImage.data, outputImage2.data, width, height, 0.8);
 
     cv::imwrite(outputFileName1, outputImage1);
     cv::imwrite(outputFileName2, outputImage2);
 
-    std::cout << "Output files saved: " << outputFileName1 << ", " << outputFileName2 << std:endl;
+    std::cout << "Output files saved: " << outputFileName1 << ", " << outputFileName2 << std::endl;
 
     return 0;
 }
