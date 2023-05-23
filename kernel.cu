@@ -41,30 +41,54 @@ __global__ void unsharpMaskKernel(const unsigned char* inputImage, unsigned char
 	}
 }
 
+void unsharpMaskCUDA(const unsigned char* inputImage, unsigned char* outputImage, int width, int height, float strength)
+{
+    const int blockSize = 16;
+    dim3 gridDim((width + blockSize - 1) / blockSize, (height + blockSize - 1) / blockSize);
+    dim3 blockDim(blockSize, blockSize);
+
+    unsigned char* devInputImage = nullptr;
+    unsigned char* devOutputImage = nullptr;
+
+    cudaMalloc((void**)&devInputImage, width * height * sizeof(unsigned char));
+    cudaMalloc((void**)&devOutputImage, width * height * sizeof(unsigned char));
+
+    cudaMemcpy(devInputImage, inputImage, width * height * sizeof(unsigned char), cudaMemcpyHostToDevice);
+
+    unsharpMaskKernel << <gridDim, blockDim >> > (devInputImage, devOutputImage, width, height, strength);
+
+    cudaMemcpy(outputImage, devOutputImage, width * height * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+
+    cudaFree(devInputImage);
+    cudaFree(devOutputImage);
+}
+
 int main()
 {
-    const int arraySize = 5;
-    const int a[arraySize] = { 1, 2, 3, 4, 5 };
-    const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    int c[arraySize] = { 0 };
+    std::string inputFileName = "input.png";
+    std::string outputFileName1 = "output1.png";
+    std::string outputFileName2 = "output2.png";
 
-    // Add vectors in parallel.
-    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addWithCuda failed!");
+    cv::Mat inputImage = cv::imread(inputFileName, cv::IMREAD_GRAYSCALE);
+    if (inputImage.empty())
+    {
+        std::cout << "Failed to open input file: " << inputFileName << std::endl;
         return 1;
     }
 
-    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-        c[0], c[1], c[2], c[3], c[4]);
+    int width = inputImage.cols;
+    int height = inputImage.rows;
 
-    // cudaDeviceReset must be called before exiting in order for profiling and
-    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-    cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
+    cv::Mat outputImage1(height, width, CV_8UC1);
+    cv::Mat outputImage2(height, width, CV_8UC1);
+
+    unsharpMaskCUDA(inputImage.data, outputImage1.data, width, height, 0.3);
+    unsharpMaskCUDA(inputImage.data, outputImage2.data, width, height, 0.3);
+
+    cv::imwrite(outputFileName1, outputImage1);
+    cv::imwrite(outputFileName2, outputImage2);
+
+    std::cout << "Output files saved: " << outputFileName1 << ", " << outputFileName2 << std:endl;
 
     return 0;
 }
