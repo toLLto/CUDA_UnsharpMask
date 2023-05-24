@@ -17,9 +17,9 @@ __global__ void unsharpMaskKernel(const unsigned char* inputImage, unsigned char
 
         // Apply the unsharp mask filter
         float blurredPixel = 0.f;
-        for (int i = -1; i <= 1; ++i)
+        for (int i = -2; i <= 2; ++i)
         {
-            for (int j = -1; j <= 1; ++j)
+            for (int j = -2; j <= 2; ++j)
             {
                 int neighborX = x + i;
                 int neighborY = y + j;
@@ -33,11 +33,16 @@ __global__ void unsharpMaskKernel(const unsigned char* inputImage, unsigned char
             }
         }
 
-        blurredPixel /= 9.f;
+        blurredPixel /= 25.f;
         float sharpenedPixel = inputImage[pixelIndex] + strength * (inputImage[pixelIndex] - blurredPixel);
 
         // Clamp to [0, 255]
-        outputImage[pixelIndex] = std::max(std::min((int)sharpenedPixel, 255), 0);
+        if ((int)sharpenedPixel > 255)
+            outputImage[pixelIndex] = 255;
+        else if ((int)sharpenedPixel < 0)
+            outputImage[pixelIndex] = 0;
+        else
+            outputImage[pixelIndex] = (int)sharpenedPixel;
 	}
 }
 
@@ -82,8 +87,8 @@ int main()
     cv::Mat outputImage1(height, width, CV_8UC1);
     cv::Mat outputImage2(height, width, CV_8UC1);
 
-    unsharpMaskCUDA(inputImage.data, outputImage1.data, width, height, 0.2);
-    unsharpMaskCUDA(inputImage.data, outputImage2.data, width, height, 0.8);
+    unsharpMaskCUDA(inputImage.data, outputImage1.data, width, height, 100);
+    unsharpMaskCUDA(inputImage.data, outputImage2.data, width, height, 20);
 
     cv::imwrite(outputFileName1, outputImage1);
     cv::imwrite(outputFileName2, outputImage2);
